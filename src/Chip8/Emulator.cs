@@ -8,7 +8,8 @@ namespace Chip8
     public class Emulator
     {
         private byte[] _mainMemory;
-        private byte[] _variableRegisters; 
+        private byte[] _variableRegisters;
+        private bool[] _keyboard;
         private Stack<ushort> _callStack;
         private uint[] _framebuffer;
         private ushort _programCounter;
@@ -16,11 +17,13 @@ namespace Chip8
         private byte _delayTimer;
         private byte _soundTimer;
         private bool _isScreenUpdated;
+        private Random _randomNumberGenerator;
 
         public Emulator()
         {
             _mainMemory = new byte[4096];
             _variableRegisters = new byte[16];
+            _keyboard = new bool[16];
             _framebuffer = new uint[64 * 32];
             _callStack = new Stack<ushort>();
             _programCounter = 0x200;
@@ -28,6 +31,7 @@ namespace Chip8
             _delayTimer = 0;
             _soundTimer = 0;
             _isScreenUpdated = false;
+            _randomNumberGenerator = new Random();
         }
 
         public void Initialize()
@@ -50,6 +54,14 @@ namespace Chip8
             }
         }
 
+        public void RunNextStep(bool[] keyboard)
+        {
+            _keyboard = keyboard;
+            var instruction = Fetch();
+            var decoded = new DecodedInstruction(instruction);
+            Execute(decoded);
+        }
+
         public uint[] GetFramebuffer()
         {
             return _framebuffer;
@@ -63,13 +75,6 @@ namespace Chip8
         public bool IsScreenUpdated()
         {
             return _isScreenUpdated;
-        }
-
-        public void RunNextStep()
-        {
-            var instruction = Fetch();
-            var decoded = new DecodedInstruction(instruction);
-            Execute(decoded);
         }
 
         private ushort Fetch()
@@ -123,8 +128,44 @@ namespace Chip8
                 case (0xA, _, _, _):
                     SetIndexANNN(decoded.NNN);
                     break;
+                case (0xB, _, _, _):
+                    JumpWithOffsetBNNN(decoded.NNN);
+                    break;
+                case (0xC, _, _, _):
+                    RandomCXNN(decoded.X, decoded.NN);
+                    break;
                 case (0xD, _, _, _):
                     DisplayDXYN(decoded.X, decoded.Y, decoded.N);
+                    break;
+                case (0xE, _, _, _):
+                    SkipIfKeyEXYN(decoded.X, decoded.Y);
+                    break;
+                case (0xF, _, 0x0, 0x7):
+                    LoadDelayIntoRegisterFX07(decoded.X);
+                    break;
+                case (0xF, _, 0x1, 0x5):
+                    LoadRegisterIntoDelayFX15(decoded.X);
+                    break;
+                case (0xF, _, 0x1, 0x8):
+                    LoadRegisterIntoSoundFX18(decoded.X);
+                    break;
+                case (0xF, _, 0x1, 0xE):
+                    AddToIndexFX1E(decoded.X);
+                    break;
+                case (0xF, _, 0x0, 0xA):
+                    GetKeyFX0A(decoded.X);
+                    break;
+                case (0xF, _, 0x2, 0x9):
+                    FontCharacterFX29(decoded.X);
+                    break;
+                case (0xF, _, 0x3, 0x3):
+                    DecimalConversionFX33(decoded.X);
+                    break;
+                case (0xF, _, 0x5, 0x5):
+                    StoreMemoryFX55(decoded.X);
+                    break;
+                case (0xF, _, 0x6, 0x5):
+                    LoadFromMemoryFX65(decoded.X);
                     break;
                 default:
                     Console.WriteLine("Instruction not implemented yet!");
@@ -188,22 +229,60 @@ namespace Chip8
 
         private void Logical8XYN(byte index1, byte index2, byte instruction)
         {
+            byte value;
             switch(instruction)
             {
-                case 0x0:
+                case 0x0: // SET
                     _variableRegisters[index1] = _variableRegisters[index2];
                     break;
-                case 0x1:
+                case 0x1:// OR
                     _variableRegisters[index1] = (byte)(_variableRegisters[index1] | _variableRegisters[index2]);
                     break;
-                case 0x2:
+                case 0x2: // AND
                     _variableRegisters[index1] = (byte)(_variableRegisters[index1] & _variableRegisters[index2]);
                     break;
-                case 0x3:
+                case 0x3: // XOR
                     _variableRegisters[index1] = (byte)(_variableRegisters[index1] ^ _variableRegisters[index2]);
                     break;
-                case 0x4:
-                    // TODO
+                case 0x4: // Add
+                    var sum = _variableRegisters[index1] + _variableRegisters[index2];
+                    if (sum > 255)
+                        _variableRegisters[0xF] = 1;
+                    else
+                        _variableRegisters[0xF] = 0;
+                    _variableRegisters[index1] = (byte) sum;
+                    break;
+                case 0x5: //Subtract X - Y
+                    if (index1 > index2)
+                        _variableRegisters[0xF] = 1;
+                    else
+                        _variableRegisters[0xF] = 0;
+                    _variableRegisters[index1] = (byte)(_variableRegisters[index1] - _variableRegisters[index2]);
+                    break;
+                case 0x6: // Shift >>
+                    // TODO - Make this configurable for Super Chip-8 support
+                    value = _variableRegisters[index2];
+                    if ((value & 0x1) == 1)
+                        _variableRegisters[0xF] = 1;
+                    else
+                        _variableRegisters[0xF] = 0;
+                    _variableRegisters[index1] = (byte)(value >> 1);
+                    break;
+                case 0x7: //Subtract Y - X
+                    if (index2 > index1)
+                        _variableRegisters[0xF] = 1;
+                    else
+                        _variableRegisters[0xF] = 0;
+                    _variableRegisters[index1] = (byte)(_variableRegisters[index2] - _variableRegisters[index1]);
+                    break;
+                case 0xE: // Shift <<
+                    // TODO - Make this configurable for Super Chip-8 support
+                    value = _variableRegisters[index2];
+                    if ((value & 0x80) >> 7 == 1)
+                        _variableRegisters[0xF] = 1;
+                    else
+                        _variableRegisters[0xF] = 0;
+                    _variableRegisters[index1] = (byte)(value << 1);
                     break;
             }
         }
@@ -217,6 +296,18 @@ namespace Chip8
         private void SetIndexANNN(ushort updatedIR)
         {
             _indexRegister = updatedIR;
+        }
+
+        private void JumpWithOffsetBNNN(ushort updatedAddress)
+        {
+            // TODO MAKE THIS CONFIGURABLE
+            _programCounter = (ushort)(updatedAddress + _variableRegisters[0x0]);
+        }
+
+        private void RandomCXNN(byte registerIndex, byte andValue)
+        {
+            byte random = (byte)_randomNumberGenerator.Next(0, 255);
+            _variableRegisters[registerIndex] = (byte)(andValue & random);
         }
 
         private void DisplayDXYN(byte x, byte y, byte n)
@@ -242,6 +333,84 @@ namespace Chip8
                 }
             }
             _isScreenUpdated = true;
+        }
+
+        private void SkipIfKeyEXYN(byte key, byte type)
+        {
+            bool isSuccess = false;
+            switch(type)
+            {
+                case 0x9:
+                    isSuccess = _keyboard[key];
+                    break;
+                case 0xA:
+                    isSuccess = !_keyboard[key];
+                    break;
+            }
+
+            if (isSuccess)
+                _programCounter = (byte)(_programCounter + 2);
+        }
+
+        private void LoadDelayIntoRegisterFX07(byte registerIndex)
+        {
+            _variableRegisters[registerIndex] = _delayTimer;
+        }
+
+        private void LoadRegisterIntoDelayFX15(byte registerIndex)
+        {
+            _delayTimer = _variableRegisters[registerIndex];
+        }
+
+        private void LoadRegisterIntoSoundFX18(byte registerIndex)
+        {
+            _soundTimer = _variableRegisters[registerIndex];
+        }
+
+        private void AddToIndexFX1E(byte registerIndex)
+        {
+            _indexRegister = (ushort)(_indexRegister + _variableRegisters[registerIndex]);
+        }
+
+        private void GetKeyFX0A(byte registerIndex)
+        {
+            bool isFound = false;
+            for (byte i = 0; i < 0xF; i++)
+            {
+                if (_keyboard[i])
+                {
+                    _variableRegisters[registerIndex] = i;
+                    isFound = true;
+                }
+            }
+            if (!isFound)
+                _programCounter = (ushort)(_programCounter - 2);
+        }
+
+        private void FontCharacterFX29(byte registerIndex)
+        {
+            byte offset = (byte)(_variableRegisters[registerIndex] & 0xF);
+            _indexRegister = (ushort)(0x050 + (offset * 5));
+        }
+
+        private void DecimalConversionFX33(byte registerIndex)
+        {
+           byte value = _variableRegisters[registerIndex];
+           _mainMemory[_indexRegister] = (byte)(value / 100);
+           var tens = value % 100;
+           _mainMemory[_indexRegister + 1] = (byte)(tens / 10);
+           var ones = tens % 10; 
+           _mainMemory[_indexRegister + 2] = (byte)ones;
+        }
+
+        private void StoreMemoryFX55(byte registerIndex)
+        {
+           // _indexRegister = (ushort)(_indexRegister + _variableRegisters[registerIndex]);
+        }
+
+        private void LoadFromMemoryFX65(byte registerIndex)
+        {
+           // _indexRegister = (ushort)(_indexRegister + _variableRegisters[registerIndex]);
         }
 
         #endregion

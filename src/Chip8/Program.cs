@@ -1,4 +1,5 @@
 ﻿using System;
+using Chip8.Helpers;
 using static SDL2.SDL;
 
 namespace Chip8
@@ -10,6 +11,8 @@ namespace Chip8
             const int videoScale = 15;
 			const int pitch = 4 * 64;
             IntPtr nullPointer = IntPtr.Zero;
+            var keyboardState = new bool[16];
+            var keypadOptions = Chip8Helpers.GetKeyCodes();
 
             var emulator = new Emulator();
             emulator.Initialize();
@@ -41,23 +44,34 @@ namespace Chip8
             while (running)
             {
                 SDL_Event _Event;
-                SDL_PollEvent(out _Event);
-                switch(_Event.type) {
-                    case SDL_EventType.SDL_QUIT:
-                        running = false;
-                        break;
+                while (SDL_PollEvent(out _Event) == 1)
+                {
+                    int index;
+                    switch(_Event.type) {
+                        case SDL_EventType.SDL_QUIT:
+                            running = false;
+                            break;
+                        case SDL_EventType.SDL_KEYDOWN:
+                            index = keypadOptions.IndexOf(_Event.key.keysym.sym);
+                            keyboardState[index] = true;
+                            break;
+                        case SDL_EventType.SDL_KEYUP:
+                            index = keypadOptions.IndexOf(_Event.key.keysym.sym);
+                            keyboardState[index] = false;
+                            break;
+                    }
                 }
 
-                emulator.RunNextStep();
+                emulator.RunNextStep(keyboardState);
 
                 if (emulator.IsScreenUpdated())
                 {
                     unsafe // ;_;
                     {
-                        fixed(uint *ptr = emulator.GetFramebuffer()) 
+                        fixed(uint *framebuffer = emulator.GetFramebuffer()) 
                         {
-                            var pointer = new IntPtr(ptr);
-                            SDL_UpdateTexture(texture, nullPointer, pointer, pitch);
+                            var framebufferRef = new IntPtr(framebuffer);
+                            SDL_UpdateTexture(texture, nullPointer, framebufferRef, pitch);
                             SDL_RenderCopy(renderer, texture, nullPointer, nullPointer);
                             SDL_RenderPresent(renderer);
                         }
