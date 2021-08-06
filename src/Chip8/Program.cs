@@ -9,7 +9,12 @@ namespace Chip8
         static void Main(string[] args)
         {
             const int videoScale = 15;
-			const int pitch = 4 * 64;
+		    const int pitch = 4 * 64;
+            const int clockRateHz = 600;  // TODO - Make configurable
+            const int refreshRateHz = 60;
+            const int instructionsPerCycle = clockRateHz / refreshRateHz;
+            const int sdlDelay = 1000 / refreshRateHz;
+
             IntPtr nullPointer = IntPtr.Zero;
             var keyboardState = new bool[16];
             var keypadOptions = Chip8Helpers.GetKeyCodes();
@@ -47,22 +52,29 @@ namespace Chip8
                 while (SDL_PollEvent(out _Event) == 1)
                 {
                     int index;
-                    switch(_Event.type) {
+                    switch(_Event.type)
+                    {
                         case SDL_EventType.SDL_QUIT:
                             running = false;
                             break;
                         case SDL_EventType.SDL_KEYDOWN:
+                            if (_Event.key.keysym.sym == SDL_Keycode.SDLK_ESCAPE) // Stop running if escape key pressed
+                                running = false;
                             index = keypadOptions.IndexOf(_Event.key.keysym.sym);
-                            keyboardState[index] = true;
+                            if (index != -1)
+                                keyboardState[index] = true;
                             break;
                         case SDL_EventType.SDL_KEYUP:
                             index = keypadOptions.IndexOf(_Event.key.keysym.sym);
-                            keyboardState[index] = false;
+                            if (index != -1)
+                                keyboardState[index] = false;
                             break;
                     }
                 }
-
-                emulator.RunNextStep(keyboardState);
+                for (short i = 0; i <= instructionsPerCycle; i++)
+                {
+                    emulator.RunNextStep(keyboardState);
+                }
 
                 if (emulator.IsScreenUpdated())
                 {
@@ -78,8 +90,8 @@ namespace Chip8
                     }
                     emulator.ResetDrawingFlag();
                 }
-
-                SDL_Delay(1); // on windows this isn't really needed, but on unix systems for some god forsaken reason, not doing this will crash your DE
+                emulator.DecrementTimers();
+                SDL_Delay(sdlDelay);
             }
 
             SDL_DestroyRenderer(renderer);

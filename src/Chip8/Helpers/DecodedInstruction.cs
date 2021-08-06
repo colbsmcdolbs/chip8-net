@@ -1,4 +1,4 @@
-namespace Chip8
+namespace Chip8.Helpers
 {
     public class DecodedInstruction
     {

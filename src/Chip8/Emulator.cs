@@ -46,7 +46,7 @@ namespace Chip8
 
         public void LoadRom()
         {
-            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\test_opcode.ch8");
+            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\INVADERS");
             var startIndex = 0x200;
             foreach (var data in fileBytes)
             {
@@ -75,6 +75,12 @@ namespace Chip8
         public bool IsScreenUpdated()
         {
             return _isScreenUpdated;
+        }
+
+        public void DecrementTimers()
+        {
+            _delayTimer--;
+            _soundTimer--;
         }
 
         private ushort Fetch()
@@ -193,8 +199,7 @@ namespace Chip8
 
         private void FinishSubroutine2NNN(ushort subroutineLocation)
         {
-            var currentProgramCounter = _programCounter;
-            _callStack.Push(currentProgramCounter);
+            _callStack.Push(_programCounter);
             _programCounter = subroutineLocation;
         }
 
@@ -324,11 +329,14 @@ namespace Chip8
                     if ((indexByte & (0x80 >> xCol)) != 0)
                     {
                         var index = xCoor + xCol + ((yCoor + yCol) * 64);
-                        if (_framebuffer[index] == 0xffffffff)
+                        if (index <= 2048)
                         {
-                            _variableRegisters[0xF] = 1;
+                            if (_framebuffer[index] == 0xffffffff)
+                            {
+                                _variableRegisters[0xF] = 1;
+                            }
+                            _framebuffer[index] ^= 0xffffffff;
                         }
-                        _framebuffer[index] ^= 0xffffffff;
                     }
                 }
             }
@@ -349,7 +357,7 @@ namespace Chip8
             }
 
             if (isSuccess)
-                _programCounter = (byte)(_programCounter + 2);
+                _programCounter = (ushort)(_programCounter + 2);
         }
 
         private void LoadDelayIntoRegisterFX07(byte registerIndex)
@@ -395,9 +403,9 @@ namespace Chip8
 
         private void DecimalConversionFX33(byte registerIndex)
         {
-           byte value = _variableRegisters[registerIndex];
-           _mainMemory[_indexRegister] = (byte)(value / 100);
-           var tens = value % 100;
+           byte initialValue = _variableRegisters[registerIndex];
+           _mainMemory[_indexRegister] = (byte)(initialValue / 100);
+           var tens = initialValue % 100;
            _mainMemory[_indexRegister + 1] = (byte)(tens / 10);
            var ones = tens % 10; 
            _mainMemory[_indexRegister + 2] = (byte)ones;
@@ -405,12 +413,20 @@ namespace Chip8
 
         private void StoreMemoryFX55(byte registerIndex)
         {
-           // _indexRegister = (ushort)(_indexRegister + _variableRegisters[registerIndex]);
+           ushort memoryLocation = _indexRegister;
+           for (byte i = 0; i <= registerIndex; i++)
+           {
+               _mainMemory[memoryLocation++] = _variableRegisters[i];
+           }
         }
 
         private void LoadFromMemoryFX65(byte registerIndex)
         {
-           // _indexRegister = (ushort)(_indexRegister + _variableRegisters[registerIndex]);
+           ushort memoryLocation = _indexRegister;
+           for (byte i = 0; i <= registerIndex; i++)
+           {
+               _variableRegisters[i] = _mainMemory[memoryLocation++];
+           }
         }
 
         #endregion

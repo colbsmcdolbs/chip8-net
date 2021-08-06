@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Chip8;
+using Chip8.Helpers;
 using System;
 
 namespace Chip8.Tests.Emulator
