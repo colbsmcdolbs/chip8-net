@@ -5,7 +5,7 @@ using Chip8.Helpers;
 
 namespace Chip8
 {
-    public class Emulator
+    public class Chip8
     {
         private byte[] _mainMemory;
         private byte[] _variableRegisters;
@@ -19,7 +19,7 @@ namespace Chip8
         private bool _isScreenUpdated;
         private Random _randomNumberGenerator;
 
-        public Emulator()
+        public Chip8()
         {
             _mainMemory = new byte[4096];
             _variableRegisters = new byte[16];
@@ -46,7 +46,7 @@ namespace Chip8
 
         public void LoadRom()
         {
-            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\INVADERS");
+            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\PONG");
             var startIndex = 0x200;
             foreach (var data in fileBytes)
             {
@@ -54,28 +54,22 @@ namespace Chip8
             }
         }
 
-        public void RunNextStep(bool[] keyboard)
+        public void RunNextStep()
         {
-            _keyboard = keyboard;
             var instruction = Fetch();
             var decoded = new DecodedInstruction(instruction);
             Execute(decoded);
         }
 
-        public uint[] GetFramebuffer()
-        {
-            return _framebuffer;
-        }
+        public void UpdateKeyboardState(bool[] keyboard) => _keyboard = keyboard;
 
-        public void ResetDrawingFlag()
-        {
-            _isScreenUpdated = false;
-        }
+        public uint[] GetFramebuffer() => _framebuffer;
 
-        public bool IsScreenUpdated()
-        {
-            return _isScreenUpdated;
-        }
+        public void ResetDrawingFlag() => _isScreenUpdated = false;
+
+        public bool IsScreenUpdated() => _isScreenUpdated;
+
+        public bool IsSoundTimerActive() => _soundTimer != 0;
 
         public void DecrementTimers()
         {

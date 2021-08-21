@@ -6,6 +6,11 @@ namespace Chip8
 {
     class Program
     {
+        public static void AudioFeed(IntPtr userData, IntPtr stream, int len)
+        {
+
+        }
+
         static void Main(string[] args)
         {
             const int videoScale = 15;
@@ -19,7 +24,25 @@ namespace Chip8
             var keyboardState = new bool[16];
             var keypadOptions = Chip8Helpers.GetKeyCodes();
 
-            var emulator = new Emulator();
+
+            // DOING AUDIO THINGS
+            
+            SDL_AudioCallback callback = new SDL_AudioCallback();
+
+            SDL_AudioSpec audioSpec = new SDL_AudioSpec
+            {
+                callback = AudioFeed(),
+                channels = 1,
+                freq = 44100,
+                format = AUDIO_U8,
+                samples = 4096,
+                userdata = 
+            };
+
+
+
+
+            var emulator = new Chip8();
             emulator.Initialize();
             emulator.LoadRom();
 
@@ -48,6 +71,7 @@ namespace Chip8
             bool running = true;
             while (running)
             {
+                // Cleanup - Create a SDLPollEvent method or handlerclass
                 SDL_Event _Event;
                 while (SDL_PollEvent(out _Event) == 1)
                 {
@@ -71,9 +95,10 @@ namespace Chip8
                             break;
                     }
                 }
+                emulator.UpdateKeyboardState(keyboardState);
                 for (short i = 0; i <= instructionsPerCycle; i++)
                 {
-                    emulator.RunNextStep(keyboardState);
+                    emulator.RunNextStep();
                 }
 
                 if (emulator.IsScreenUpdated())
@@ -91,6 +116,10 @@ namespace Chip8
                     emulator.ResetDrawingFlag();
                 }
                 emulator.DecrementTimers();
+                if (emulator.IsSoundTimerActive())
+                {
+                    // Play or pause audio
+                }
                 SDL_Delay(sdlDelay);
             }
 

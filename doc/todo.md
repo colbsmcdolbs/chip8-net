@@ -10,3 +10,6 @@
 
 ## Nice to Haves (make it nice)
 - [ ] Add support for SUPER-CHIP-8
+- [ ] Add Debug Support (TUI Application)
+- [ ] Add Option for Cached Interpreter
+- [ ] Add Option for Dynamic Recompilation
