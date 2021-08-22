@@ -46,7 +46,7 @@ namespace Chip8
 
         public void LoadRom()
         {
-            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\PONG");
+            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\TETRIS");
             var startIndex = 0x200;
             foreach (var data in fileBytes)
             {
@@ -54,11 +54,14 @@ namespace Chip8
             }
         }
 
-        public void RunNextStep()
+        public void Tick(int instructionsPerCycle)
         {
-            var instruction = Fetch();
-            var decoded = new DecodedInstruction(instruction);
-            Execute(decoded);
+            for (int i = 0; i < instructionsPerCycle; i++)
+            {
+                var instruction = Fetch();
+                var decoded = new DecodedInstruction(instruction);
+                Execute(decoded);
+            }
         }
 
         public void UpdateKeyboardState(bool[] keyboard) => _keyboard = keyboard;
@@ -377,7 +380,7 @@ namespace Chip8
         private void GetKeyFX0A(byte registerIndex)
         {
             bool isFound = false;
-            for (byte i = 0; i < 0xF; i++)
+            for (byte i = 0; i < _keyboard.Length; i++)
             {
                 if (_keyboard[i])
                 {
