@@ -46,7 +46,7 @@ namespace Chip8
 
         public void LoadRom()
         {
-            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\TETRIS");
+            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\PONG");
             var startIndex = 0x200;
             foreach (var data in fileBytes)
             {
@@ -255,7 +255,7 @@ namespace Chip8
                     _variableRegisters[index1] = (byte) sum;
                     break;
                 case 0x5: //Subtract X - Y
-                    if (index1 > index2)
+                    if (_variableRegisters[index1] > _variableRegisters[index2])
                         _variableRegisters[0xF] = 1;
                     else
                         _variableRegisters[0xF] = 0;
@@ -263,15 +263,12 @@ namespace Chip8
                     break;
                 case 0x6: // Shift >>
                     // TODO - Make this configurable for Super Chip-8 support
-                    value = _variableRegisters[index2];
-                    if ((value & 0x1) == 1)
-                        _variableRegisters[0xF] = 1;
-                    else
-                        _variableRegisters[0xF] = 0;
+                    value = _variableRegisters[index1];
+                    _variableRegisters[0xF] = (byte)(value & 0x1);
                     _variableRegisters[index1] = (byte)(value >> 1);
                     break;
                 case 0x7: //Subtract Y - X
-                    if (index2 > index1)
+                    if (_variableRegisters[index2] > _variableRegisters[index1])
                         _variableRegisters[0xF] = 1;
                     else
                         _variableRegisters[0xF] = 0;
@@ -279,11 +276,8 @@ namespace Chip8
                     break;
                 case 0xE: // Shift <<
                     // TODO - Make this configurable for Super Chip-8 support
-                    value = _variableRegisters[index2];
-                    if ((value & 0x80) >> 7 == 1)
-                        _variableRegisters[0xF] = 1;
-                    else
-                        _variableRegisters[0xF] = 0;
+                    value = _variableRegisters[index1];
+                    _variableRegisters[0xF] = (byte)((value & 0x80) >> 7);
                     _variableRegisters[index1] = (byte)(value << 1);
                     break;
             }
