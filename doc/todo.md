@@ -2,11 +2,11 @@
 - [X] Finish Implementing all OpCode Functions
 - [X] Implement User Key Presses
 - [X] Implement timing features, so that CPU runs at certain clockrate
-- [ ] Implement sound 
-- [ ] Tidy up all the SDL code into either it's own display class on helper class
+- [X] Implement sound 
+- [X] Tidy up all the SDL code into either it's own display class on helper class
 - [ ] Allow for Users to select their own games for playing
 - [ ] Add configuration file for editting CPU Speed, Graphics colors, etc
-- [ ] Test all ROMs available
+- [X] Test all ROMs available
 
 ## Nice to Haves (make it nice)
 - [ ] Add support for SUPER-CHIP-8

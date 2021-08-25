@@ -1,7 +1,6 @@
 ﻿using System;
 using Chip8.Helpers;
-using Raylib_cs;
-using static Raylib_cs.Raylib;
+using static SDL2.SDL;
 
 namespace Chip8
 {
@@ -9,118 +8,40 @@ namespace Chip8
     {
         static void Main(string[] args)
         {
-            const int videoScale = 15;
             const int clockRateHz = 600;  // TODO - Make configurable
             const int refreshRateHz = 60;
-            const int instructionsPerCycle = clockRateHz / refreshRateHz;
-            var keyboardState = new bool[16];
-            const int MAX_SAMPLES_PER_UPDATE = 4096;
-            const int MAX_SAMPLES = 512;
+            int instructionsPerCycle = (int)Math.Ceiling((double)(clockRateHz / refreshRateHz));
+            const int sdlDelay = 1000 / refreshRateHz;
 
-            // Buffer for the single cycle waveform we are synthesizing
-            short[] data = new short[MAX_SAMPLES];
-
-            // Frame buffer, describing the waveform when repeated over the course of a frame
-            short[] writeBuf = new short[MAX_SAMPLES_PER_UPDATE];
+            SDLHelpers.SDLInit();
 
             var emulator = new Chip8();
             emulator.Initialize();
             emulator.LoadRom();
 
-            InitWindow(64 * videoScale, 32 * videoScale, "Chip-8 Interpreter");
-            InitAudioDevice();
-            SetAudioStreamBufferSizeDefault(4096);
-            AudioStream stream = InitAudioStream(44100, 16, 1);
-            PlayAudioStream(stream);
-
-            SetTargetFPS(refreshRateHz);
-
-            while (!WindowShouldClose())
+            bool running = true;
+            while (running)
             {
-                keyboardState.Initialize();
-                int index = 0;
-                foreach (var key in Chip8Helpers.GetKeyCodes())
-                {
-                    if (IsKeyDown(key)) keyboardState[index] = true;
-                    else if(IsKeyUp(key)) keyboardState[index] = false;
-                    index++;
-                }
+                var events = SDLHelpers.PollEvents();
+                running = events.IsRunning;
 
-                emulator.UpdateKeyboardState(keyboardState);
+                emulator.UpdateKeyboardState(events.KeyboardStatus);
                 emulator.Tick(instructionsPerCycle);
 
-
-                // Refill audio stream if required
-                // if (IsAudioStreamProcessed(stream))
-                // {
-                //     // Synthesize a buffer that is exactly the requested size
-                //     int writeCursor = 0;
-                //     int readCursor = 0;
-
-                //     while (writeCursor < MAX_SAMPLES_PER_UPDATE)
-                //     {
-                //         // Start by trying to write the whole chunk at once
-                //         int writeLength = MAX_SAMPLES_PER_UPDATE-writeCursor;
-
-                //         // Limit to the maximum readable size
-                //         int readLength = 1-readCursor;
-
-                //         if (writeLength > readLength) writeLength = readLength;
-
-                //         // Write the slice
-                //         memcpy(writeBuf + writeCursor, data + readCursor, writeLength*sizeof(short));
-
-                //         // Update cursors and loop audio
-                //         readCursor = (readCursor + writeLength) % 1;
-
-                //         writeCursor += writeLength;
-                //     }
-
-                //     // Copy finished frame to audio stream
-                //     UpdateAudioStream(stream, writeBuf, MAX_SAMPLES_PER_UPDATE);
-                // }
-
-
-
-                // Draw
-                //----------------------------------------------------------------------------------
-                unsafe // ;_;
+                if (emulator.IsScreenUpdated())
                 {
-                    fixed(uint *framebuffer = emulator.GetFramebuffer()) 
-                    {
-                        var framebufferRef = new IntPtr(framebuffer);
-                        var image = new Image
-                        {
-                            data = framebufferRef,
-                            format = PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
-                            width = 64,
-                            height = 32,
-                            mipmaps = 1
-                        };
-                        var texture = LoadTextureFromImage(image);
-
-                        BeginDrawing();
-                        ClearBackground(Color.BLACK);
-                        DrawTextureEx(texture, new System.Numerics.Vector2(), 0, 15, Color.WHITE);
-                        EndDrawing();
-
-                        UnloadTexture(texture);
-                        emulator.ResetDrawingFlag();
-                    }
+                    SDLHelpers.UpdateScreen(emulator.GetFramebuffer());
+                    emulator.ResetDrawingFlag();
                 }
 
                 emulator.DecrementTimers();
 
-                if (emulator.IsSoundTimerActive())
-                    PlayAudioStream(stream);
-                else
-                    PauseAudioStream(stream);
-                //----------------------------------------------------------------------------------
+                SDLHelpers.ToggleAudio(emulator.IsSoundTimerActive());
+
+                SDL_Delay(sdlDelay);
             }
 
-            CloseAudioStream(stream);
-            CloseAudioDevice();
-            CloseWindow();
+            SDLHelpers.SDLTearDown();
         }
     }
 }

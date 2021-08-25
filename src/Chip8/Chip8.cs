@@ -46,7 +46,7 @@ namespace Chip8
 
         public void LoadRom()
         {
-            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\PONG");
+            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\INVADERS");
             var startIndex = 0x200;
             foreach (var data in fileBytes)
             {
@@ -72,12 +72,12 @@ namespace Chip8
 
         public bool IsScreenUpdated() => _isScreenUpdated;
 
-        public bool IsSoundTimerActive() => _soundTimer != 0;
+        public bool IsSoundTimerActive() => _soundTimer > 0;
 
         public void DecrementTimers()
         {
-            _delayTimer--;
-            _soundTimer--;
+            if (_delayTimer > 0) _delayTimer--;
+            if (_soundTimer > 0) _soundTimer--;
         }
 
         private ushort Fetch()
@@ -180,7 +180,7 @@ namespace Chip8
 
         private void ClearScreen00E0()
         {
-            _framebuffer.Initialize();
+            Array.Clear(_framebuffer, 0, _framebuffer.Length);
             _isScreenUpdated = true;
         }
 
@@ -320,7 +320,7 @@ namespace Chip8
                     if ((indexByte & (0x80 >> xCol)) != 0)
                     {
                         var index = xCoor + xCol + ((yCoor + yCol) * 64);
-                        if (index <= 2048)
+                        if (index < 2048)
                         {
                             if (_framebuffer[index] == 0xffffffff)
                             {
@@ -334,9 +334,10 @@ namespace Chip8
             _isScreenUpdated = true;
         }
 
-        private void SkipIfKeyEXYN(byte key, byte type)
+        private void SkipIfKeyEXYN(byte registerIndex, byte type)
         {
             bool isSuccess = false;
+            byte key = _variableRegisters[registerIndex];
             switch(type)
             {
                 case 0x9:
