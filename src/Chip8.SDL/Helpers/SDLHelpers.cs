@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using static SDL2.SDL;
 
-namespace Chip8.Helpers
+namespace Chip8.SDL.Helpers
 {
     public static class SDLHelpers
     {
@@ -22,7 +22,25 @@ namespace Chip8.Helpers
             SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO);
             GraphicsInit();
             AudioInit();
-            keypadOptions = Chip8Helpers.GetKeyCodes();
+            keypadOptions = new List<SDL_Keycode>
+            {
+                SDL_Keycode.SDLK_x, //0
+                SDL_Keycode.SDLK_1, //1
+                SDL_Keycode.SDLK_2, //2
+                SDL_Keycode.SDLK_3, //3
+                SDL_Keycode.SDLK_q, //4
+                SDL_Keycode.SDLK_w, //5
+                SDL_Keycode.SDLK_e, //6
+                SDL_Keycode.SDLK_a, //7
+                SDL_Keycode.SDLK_s, //8
+                SDL_Keycode.SDLK_d, //9
+                SDL_Keycode.SDLK_z, //a
+                SDL_Keycode.SDLK_c, //b
+                SDL_Keycode.SDLK_4, //c
+                SDL_Keycode.SDLK_r, //d
+                SDL_Keycode.SDLK_f, //e
+                SDL_Keycode.SDLK_v  //f
+            };
         }
 
         private static void GraphicsInit()
@@ -60,10 +78,10 @@ namespace Chip8.Helpers
             audioDevice = SDL_OpenAudioDevice(null, 0, ref audioSpec, out _, (int)SDL_AUDIO_ALLOW_FORMAT_CHANGE);
         }
 
-        public static EventResult PollEvents()
+        public static EventResult PollEvents(bool[] keyboardState)
         {
-            var keyboardState = new bool[16];
             var running = true;
+            int index;
             while (SDL_PollEvent(out _Event) == 1)
             {
                 switch(_Event.type)
@@ -74,9 +92,14 @@ namespace Chip8.Helpers
                     case SDL_EventType.SDL_KEYDOWN:
                         if (_Event.key.keysym.sym == SDL_Keycode.SDLK_ESCAPE) // Stop running if escape key pressed
                             running = false;
-                        int index = keypadOptions.IndexOf(_Event.key.keysym.sym);
+                        index = keypadOptions.IndexOf(_Event.key.keysym.sym);
                         if (index != -1)
                             keyboardState[index] = true;
+                        break;
+                    case SDL_EventType.SDL_KEYUP:
+                        index = keypadOptions.IndexOf(_Event.key.keysym.sym);
+                        if (index != -1)
+                            keyboardState[index] = false;
                         break;
                 }
             }

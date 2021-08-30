@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using static SDL2.SDL;
 
 namespace Chip8.Helpers
 {
@@ -25,29 +24,6 @@ namespace Chip8.Helpers
                 0xE0, 0x90, 0x90, 0x90, 0xE0, // D (0x115)
                 0xF0, 0x80, 0xF0, 0x80, 0xF0, // E (0x120)
                 0xF0, 0x80, 0xF0, 0x80, 0x80  // F (0x125)
-            };
-        }
-
-        public static List<SDL_Keycode> GetKeyCodes()
-        {
-            return new List<SDL_Keycode>
-            {
-                SDL_Keycode.SDLK_x, //0
-                SDL_Keycode.SDLK_1, //1
-                SDL_Keycode.SDLK_2, //2
-                SDL_Keycode.SDLK_3, //3
-                SDL_Keycode.SDLK_q, //4
-                SDL_Keycode.SDLK_w, //5
-                SDL_Keycode.SDLK_e, //6
-                SDL_Keycode.SDLK_a, //7
-                SDL_Keycode.SDLK_s, //8
-                SDL_Keycode.SDLK_d, //9
-                SDL_Keycode.SDLK_z, //a
-                SDL_Keycode.SDLK_c, //b
-                SDL_Keycode.SDLK_4, //c
-                SDL_Keycode.SDLK_r, //d
-                SDL_Keycode.SDLK_f, //e
-                SDL_Keycode.SDLK_v  //f
             };
         }
     }

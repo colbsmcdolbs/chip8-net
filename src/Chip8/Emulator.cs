@@ -5,7 +5,7 @@ using Chip8.Helpers;
 
 namespace Chip8
 {
-    public class Chip8
+    public class Emulator
     {
         private byte[] _mainMemory;
         private byte[] _variableRegisters;
@@ -18,8 +18,9 @@ namespace Chip8
         private byte _soundTimer;
         private bool _isScreenUpdated;
         private Random _randomNumberGenerator;
+        private uint _mainColor;
 
-        public Chip8()
+        public Emulator()
         {
             _mainMemory = new byte[4096];
             _variableRegisters = new byte[16];
@@ -32,6 +33,9 @@ namespace Chip8
             _soundTimer = 0;
             _isScreenUpdated = false;
             _randomNumberGenerator = new Random();
+            _mainColor = 0xFFFFFFFF;
+
+            ClearScreen00E0(); // Initialize screen
         }
 
         public void Initialize()
@@ -46,7 +50,7 @@ namespace Chip8
 
         public void LoadRom()
         {
-            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\INVADERS");
+            var fileBytes = File.ReadAllBytes($"{Environment.CurrentDirectory}\\Assets\\PONG2");
             var startIndex = 0x200;
             foreach (var data in fileBytes)
             {
@@ -180,7 +184,8 @@ namespace Chip8
 
         private void ClearScreen00E0()
         {
-            Array.Clear(_framebuffer, 0, _framebuffer.Length);
+            uint offValue = ~_mainColor;
+            Array.Fill<uint>(_framebuffer, offValue);
             _isScreenUpdated = true;
         }
 
@@ -322,11 +327,11 @@ namespace Chip8
                         var index = xCoor + xCol + ((yCoor + yCol) * 64);
                         if (index < 2048)
                         {
-                            if (_framebuffer[index] == 0xffffffff)
+                            if (_framebuffer[index] == _mainColor)
                             {
                                 _variableRegisters[0xF] = 1;
                             }
-                            _framebuffer[index] ^= 0xffffffff;
+                            _framebuffer[index] = ~_framebuffer[index];
                         }
                     }
                 }
